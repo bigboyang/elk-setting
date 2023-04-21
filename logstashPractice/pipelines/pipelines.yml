@@ -1,0 +1,10 @@
+# This file is where you define your pipelines. You can define multiple.
+# For more information on multiple pipelines, see the documentation:
+#   https://www.elastic.co/guide/en/logstash/current/multiple-pipelines.html
+# 파이프라인 소스 설정파일 경로를 지정한다.
+
+- pipeline.id: mypipe1
+  path.config: "/usr/share/logstash/config/mypipe1.conf"
+
+- pipeline.id: mypipe2
+  path.config: "/usr/share/logstash/config/mypipe2.conf"

@@ -1,0 +1,89 @@
+version: '3.8'
+services:
+  esm01:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.16.2
+    # 리눅스의 nofile (파일디스크립터 수) : 65535 , nproc(최대 프로세스 수) : 4096 으로 설정 
+    # limit.conf 파일에 설정하거나 ulimit -n 65535, ulimit -u 4096 명령어로 설정
+    # 최대 가상 메모리 설정 : sysctl -w vm.max_map_count=262144
+    container_name: esm01
+    ports:
+      - "9200:9200"
+    volumes:
+      - data01:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    environment:
+      ES_SETTING_BOOTSTRAP_MEMORY__LOCK: "true" # 스왑메모리 비활성
+      ES_JAVA_OPTS: "-Xmx512m -Xms512m -Xlog:disable"
+      node.name: esm01
+      node.roles: master
+      network.host: 0.0.0.0
+      cluster.name: es-cluster
+      cluster.initial_master_nodes: esm01 # 마스터노드 명시
+      discovery.seed_hosts: esm01,esd01,esd02 # 클러스터에 묶여있는 노드 명시
+      xpack.security.enabled: "false"
+      xpack.monitoring.collection.enabled: "false"
+    # restart: always
+
+  esd01:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.16.2
+    container_name: esd01
+    volumes:
+      - data02:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    environment:
+      ES_SETTING_BOOTSTRAP_MEMORY__LOCK: "true"
+      ES_JAVA_OPTS: "-Xmx512m -Xms512m -Xlog:disable"
+      node.name: esd01
+      node.roles: data,ingest
+      cluster.name: es-cluster
+      cluster.initial_master_nodes: esm01 # 마스터노드 명시
+      discovery.seed_hosts: esm01,esd01,esd02 # 클러스터에 묶여있는 노드 명시
+      xpack.security.enabled: "false"
+      xpack.monitoring.collection.enabled: "false"
+    # restart: always
+  esd02:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.16.2
+    container_name: esd02
+    volumes:
+      - data03:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    environment:
+      ES_SETTING_BOOTSTRAP_MEMORY__LOCK: "true"
+      ES_JAVA_OPTS: "-Xmx512m -Xms512m -Xlog:disable" # 최소, 최대힙 크기는 동일하게 설정합니다. -> 힙 메모리 확장 과정에서 노드가 멈출 수 있음
+      node.name: esd02
+      node.roles: data,ingest
+      cluster.name: es-cluster
+      cluster.initial_master_nodes: esm01 # 마스터노드 명시
+      discovery.seed_hosts: esm01,esd01,esd02 # 클러스터에 묶여있는 노드 명시
+      xpack.security.enabled: "false"
+      xpack.monitoring.collection.enabled: "false"
+    restart: always
+  metricbeat:
+    image: docker.elastic.co/beats/metricbeat:7.16.2
+    container_name: metricbeat
+    environment:
+      ELASTICSEARCH_HOSTS: http://esm01:9200
+    volumes:
+      - ./config/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml
+
+volumes:
+  data01:
+    driver: local
+  data02:
+    driver: local
+  data03:
+    driver: local
+
+networks:
+  default:
+    external:
+      name: logging
